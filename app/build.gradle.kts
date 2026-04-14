@@ -45,6 +45,7 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    implementation("androidx.documentfile:documentfile:1.0.1")
     
     // QR Code - ZXing
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")

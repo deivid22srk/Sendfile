@@ -1,6 +1,5 @@
 package com.sendfile.app
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -9,7 +8,9 @@ import android.os.Environment
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.documentfile.provider.DocumentFile
 import com.sendfile.app.databinding.ActivityReceiveBinding
+import com.sendfile.app.databinding.FolderPickerBinding
 import android.graphics.Bitmap
 import java.io.File
 import java.net.ServerSocket
@@ -24,6 +25,7 @@ class ReceiveActivity : AppCompatActivity() {
     }
 
     private lateinit var binding: ActivityReceiveBinding
+    private lateinit var folderBinding: FolderPickerBinding
     private var serverThread: Thread? = null
     private var isRunning = false
     private var selectedFolder: Uri? = null
@@ -37,7 +39,7 @@ class ReceiveActivity : AppCompatActivity() {
                 it,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             )
-            binding.tvSelectedFolder.text = "Pasta selecionada: ${getFolderName(it)}"
+            folderBinding.tvSelectedFolder.text = "Pasta selecionada: ${getFolderName(it)}"
             Toast.makeText(this, "Pasta selecionada!", Toast.LENGTH_SHORT).show()
         }
     }
@@ -45,6 +47,7 @@ class ReceiveActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityReceiveBinding.inflate(layoutInflater)
+        folderBinding = FolderPickerBinding.bind(binding.folderPickerLayout.root)
         setContentView(binding.root)
 
         setupUI()
@@ -57,7 +60,7 @@ class ReceiveActivity : AppCompatActivity() {
             finish()
         }
 
-        binding.btnSelectFolder.setOnClickListener {
+        folderBinding.btnSelectFolder.setOnClickListener {
             folderPickerLauncher.launch(null)
         }
     }
@@ -97,16 +100,16 @@ class ReceiveActivity : AppCompatActivity() {
                 val socket = serverSocket.accept()
                 runOnUiThread {
                     binding.tvStatus.text = "Conectado! Recebendo arquivos..."
-                    TransferProgressActivity.start(this, 0, 0, false)
                 }
                 
                 // Get save location
                 val saveDir = if (selectedFolder != null) {
-                    val docFile = android.documentfile.DocumentFile.fromTreeUri(this, selectedFolder!!)
-                    File(docFile?.uri?.toString() ?: Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath)
+                    val docFile = DocumentFile.fromTreeUri(this, selectedFolder!!)
+                    File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SendFile")
                 } else {
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                    File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SendFile")
                 }
+                saveDir.mkdirs()
                 
                 receiveFiles(socket, saveDir)
                 
@@ -146,10 +149,6 @@ class ReceiveActivity : AppCompatActivity() {
                 totalBytes += fileSize
             }
             
-            runOnUiThread {
-                TransferProgressActivity.start(this, totalBytes, fileCount, false)
-            }
-            
             // Receive files
             for ((fileName, fileSize, outputFile) in fileInfos) {
                 val output = java.io.FileOutputStream(outputFile)
@@ -166,21 +165,22 @@ class ReceiveActivity : AppCompatActivity() {
                     output.write(buffer, 0, read)
                     transferredBytes += read
                     remaining -= read
-                    
-                    val elapsed = (System.currentTimeMillis() - startTime) / 1000.0
-                    val speed = if (elapsed > 0) transferredBytes / elapsed else 0.0
-                    
-                    runOnUiThread {
-                        // Update progress activity if it exists
-                    }
                 }
                 output.close()
             }
             
+            val elapsed = (System.currentTimeMillis() - startTime) / 1000.0
+            val speed = if (elapsed > 0) transferredBytes / elapsed else 0.0
+            val speedStr = formatSpeed(speed)
+            
             socket.close()
             
             runOnUiThread {
-                binding.tvStatus.text = "Transferência concluída!\nArquivos salvos em: ${saveDir.absolutePath}"
+                binding.tvStatus.text = "Transferência concluída!\n" +
+                        "Arquivos: $fileCount\n" +
+                        "Tamanho: ${formatSize(transferredBytes)}\n" +
+                        "Velocidade: $speedStr\n" +
+                        "Pasta: ${saveDir.absolutePath}"
                 Toast.makeText(this, "Arquivos recebidos com sucesso!", Toast.LENGTH_LONG).show()
             }
         } catch (e: Exception) {
@@ -209,6 +209,23 @@ class ReceiveActivity : AppCompatActivity() {
             bitmap
         } catch (e: Exception) {
             null
+        }
+    }
+
+    private fun formatSize(bytes: Long): String {
+        return when {
+            bytes < 1024 -> "$bytes B"
+            bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+            bytes < 1024 * 1024 * 1024 -> "${bytes / (1024 * 1024)} MB"
+            else -> String.format("%.2f GB", bytes / (1024.0 * 1024.0 * 1024.0))
+        }
+    }
+
+    private fun formatSpeed(bytesPerSec: Double): String {
+        return when {
+            bytesPerSec < 1024 -> "${bytesPerSec.toInt()} B/s"
+            bytesPerSec < 1024 * 1024 -> "${bytesPerSec / 1024} KB/s"
+            else -> String.format("%.1f MB/s", bytesPerSec / (1024.0 * 1024.0))
         }
     }
 
