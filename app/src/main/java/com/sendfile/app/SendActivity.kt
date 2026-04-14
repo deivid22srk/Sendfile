@@ -43,9 +43,10 @@ class SendActivity : AppCompatActivity() {
     ) { result ->
         if (result.resultCode == RESULT_OK) {
             val data = result.data
-            val scanResult = com.journeyapps.barcodescanner.ScanIntentResult.parseActivityResult(result.resultCode, data)
-            if (scanResult.contents != null) {
-                startTransfer(scanResult.contents)
+            val scanResult = data?.getStringExtra("SCAN_RESULT")
+                ?: data?.getStringExtra("SCAN_RESULT")
+            if (scanResult != null) {
+                startTransfer(scanResult)
             } else {
                 Toast.makeText(this, "Falha ao ler QR Code", Toast.LENGTH_SHORT).show()
             }
