@@ -21,7 +21,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Escolher Pasta"
-        app:icon="@android:drawable.ic_menu_upload"
+        app:icon="@drawable/ic_folder"
         style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
     <TextView

@@ -107,7 +107,7 @@ class TransferService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("SendFile")
             .setContentText(text)
-            .setSmallIcon(android.R.drawable.stat_sys_upload)
+            .setSmallIcon(R.drawable.ic_upload)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
     }
